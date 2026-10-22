@@ -11,15 +11,14 @@ import (
 	"moviehub/store"
 )
 
+// dummyHash คือลายนิ้วมือหลอก ใช้เทียบเมื่อไม่พบอีเมล เพื่อให้เสียเวลาเท่ากัน
+// บดครั้งเดียวตอนโปรแกรมเริ่ม ไม่ได้บดใหม่ทุกคำขอ
+var dummyHash, _ = auth.HashPassword("ไม่มีใครใช้รหัสนี้")
+
 type registerReq struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`
-}
-
-type loginReq struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +57,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, m)
 }
 
+type loginReq struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -67,6 +71,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	m, err := h.Store.MemberByEmail(r.Context(), email)
 	if errors.Is(err, store.ErrNotFound) {
+		auth.CheckPassword(dummyHash, req.Password) // เสียเวลาเท่ากับกรณีรหัสผิด
 		writeError(w, http.StatusUnauthorized, "BAD_CREDENTIALS", "อีเมลหรือรหัสผ่านไม่ถูกต้อง")
 		return
 	}
